@@ -10,7 +10,7 @@ export const CreateTeam: React.FC = () => {
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || !dbUser?.orgId) return;
-    const res = await fetch('http://localhost:3000/teams', {
+    const res = await fetch(import.meta.env.VITE_API_BASE_URL + '/teams', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ orgId: dbUser.orgId, name: teamName })

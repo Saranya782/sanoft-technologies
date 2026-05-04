@@ -18,8 +18,8 @@ export const TeamDetail: React.FC = () => {
     try {
       const headers = { Authorization: `Bearer ${token}` };
       const [teamsRes, usersRes] = await Promise.all([
-        fetch(`http://localhost:3000/teams/org/${dbUser.orgId}`, { headers }),
-        fetch(`http://localhost:3000/users/org/${dbUser.orgId}`, { headers })
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/teams/org/${dbUser.orgId}`, { headers }),
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/users/org/${dbUser.orgId}`, { headers })
       ]);
       const teams = await teamsRes.json();
       const users = await usersRes.json();
@@ -39,7 +39,7 @@ export const TeamDetail: React.FC = () => {
 
   const handleUpdateTeam = async () => {
     if (!token || !id) return;
-    const res = await fetch(`http://localhost:3000/teams/${id}`, {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/teams/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ name: editName })
@@ -53,7 +53,7 @@ export const TeamDetail: React.FC = () => {
   const handleDeleteTeam = async () => {
     if (!token || !id) return;
     if (!window.confirm("Are you sure you want to delete this team?")) return;
-    const res = await fetch(`http://localhost:3000/teams/${id}`, { 
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/teams/${id}`, { 
       method: 'DELETE', 
       headers: { Authorization: `Bearer ${token}` } 
     });
@@ -62,7 +62,7 @@ export const TeamDetail: React.FC = () => {
 
   const handleAssignMember = async (userId: string) => {
     if (!token || !id) return;
-    const res = await fetch(`http://localhost:3000/teams/${id}/members`, {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/teams/${id}/members`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ userId })
@@ -73,7 +73,7 @@ export const TeamDetail: React.FC = () => {
   const handleRemoveMember = async (userId: string) => {
     if (!token || !id) return;
     if (!window.confirm("Are you sure you want to remove this user from the team?")) return;
-    const res = await fetch(`http://localhost:3000/teams/${id}/members/${userId}`, {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/teams/${id}/members/${userId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` }
     });

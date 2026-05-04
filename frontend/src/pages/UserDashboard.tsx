@@ -20,8 +20,8 @@ export const UserDashboard: React.FC = () => {
     if (!token) return;
     try {
       const [tasksRes, alertsRes] = await Promise.all([
-        fetch('http://localhost:3000/tasks', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('http://localhost:3000/alerts', { headers: { Authorization: `Bearer ${token}` } })
+        fetch(import.meta.env.VITE_API_BASE_URL + '/tasks', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(import.meta.env.VITE_API_BASE_URL + '/alerts', { headers: { Authorization: `Bearer ${token}` } })
       ]);
       const tasksData = await tasksRes.json();
       const alertsData = await alertsRes.json();
@@ -41,7 +41,7 @@ export const UserDashboard: React.FC = () => {
 
   const markAlertRead = async (alertId: string) => {
     if (!token) return;
-    await fetch(`http://localhost:3000/alerts/${alertId}/read`, {
+    await fetch(`${import.meta.env.VITE_API_BASE_URL}/alerts/${alertId}/read`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -52,7 +52,7 @@ export const UserDashboard: React.FC = () => {
 
   const updateTaskStatus = async (taskId: string, newStatus: string) => {
     if (!token) return;
-    const res = await fetch(`http://localhost:3000/tasks/${taskId}/status`, {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${taskId}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ status: newStatus })

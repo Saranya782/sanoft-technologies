@@ -21,13 +21,13 @@ export const TaskDetail: React.FC = () => {
         const headers = { Authorization: `Bearer ${token}` };
         
         const fetchPromises: Promise<Response>[] = [
-          fetch(`http://localhost:3000/tasks/${id}`, { headers })
+          fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${id}`, { headers })
         ];
 
         if (dbUser?.orgId) {
           fetchPromises.push(
-            fetch(`http://localhost:3000/teams/org/${dbUser.orgId}`, { headers }),
-            fetch(`http://localhost:3000/users/org/${dbUser.orgId}`, { headers })
+            fetch(`${import.meta.env.VITE_API_BASE_URL}/teams/org/${dbUser.orgId}`, { headers }),
+            fetch(`${import.meta.env.VITE_API_BASE_URL}/users/org/${dbUser.orgId}`, { headers })
           );
         }
 
@@ -59,7 +59,7 @@ export const TaskDetail: React.FC = () => {
   const updateTaskStatus = async (newStatus: string) => {
     if (!token) return;
     try {
-      const res = await fetch(`http://localhost:3000/tasks/${id}/status`, {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${id}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus })
@@ -75,7 +75,7 @@ export const TaskDetail: React.FC = () => {
   const handleUpdate = async () => {
     if (!token) return;
     try {
-      const res = await fetch(`http://localhost:3000/tasks/${id}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(editData)
@@ -93,7 +93,7 @@ export const TaskDetail: React.FC = () => {
     if (!token) return;
     if (!window.confirm("Are you sure you want to delete this task?")) return;
     try {
-      const res = await fetch(`http://localhost:3000/tasks/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) navigate('/');
     } catch (err) {
       console.error('Failed to delete task');

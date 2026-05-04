@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { useNavigate, Link } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 
 export const Register: React.FC = () => {
   const [name, setName] = useState('');
@@ -9,6 +10,7 @@ export const Register: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -21,7 +23,7 @@ export const Register: React.FC = () => {
       const token = await userCredential.user.getIdToken();
       
       // Sync user with backend
-      await fetch('http://localhost:3000/users/sync', {
+      await fetch(import.meta.env.VITE_API_BASE_URL + '/users/sync', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -67,13 +69,23 @@ export const Register: React.FC = () => {
           </div>
           <div className="input-group">
             <label>Password</label>
-            <input 
-              type="password" 
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              required 
-              minLength={6}
-            />
+            <div style={{ position: 'relative' }}>
+              <input 
+                type={showPassword ? 'text' : 'password'} 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                required 
+                minLength={6}
+                style={{ width: '100%', paddingRight: '2.5rem' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
           
           <button type="submit" className="btn-primary" disabled={loading}>

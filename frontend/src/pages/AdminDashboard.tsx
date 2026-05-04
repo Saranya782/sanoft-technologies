@@ -36,11 +36,11 @@ export const AdminDashboard: React.FC = () => {
     if (!token || !dbUser?.orgId) return;
     try {
       const [orgRes, teamsRes, tasksRes, usersRes, alertsRes] = await Promise.all([
-        fetch(`http://localhost:3000/organizations/${dbUser.orgId}`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`http://localhost:3000/teams/org/${dbUser.orgId}`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`http://localhost:3000/tasks`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`http://localhost:3000/users/org/${dbUser.orgId}`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`http://localhost:3000/alerts`, { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/organizations/${dbUser.orgId}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/teams/org/${dbUser.orgId}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/users/org/${dbUser.orgId}`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/alerts`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
       setOrg(await orgRes.json());
       setTeams(await teamsRes.json());
@@ -66,7 +66,7 @@ export const AdminDashboard: React.FC = () => {
   const handleCreateOrg = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
-    const res = await fetch('http://localhost:3000/organizations', {
+    const res = await fetch(import.meta.env.VITE_API_BASE_URL + '/organizations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ name: orgName })
@@ -78,7 +78,7 @@ export const AdminDashboard: React.FC = () => {
 
   const handleUpdateTeam = async (id: string) => {
     if (!token) return;
-    const res = await fetch(`http://localhost:3000/teams/${id}`, {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/teams/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ name: editTeamName })
@@ -89,7 +89,7 @@ export const AdminDashboard: React.FC = () => {
   const handleDeleteTeam = async (id: string) => {
     if (!token) return;
     if (!window.confirm("Delete this team?")) return;
-    await fetch(`http://localhost:3000/teams/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    await fetch(`${import.meta.env.VITE_API_BASE_URL}/teams/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
     fetchOrgData();
   };
 
@@ -99,7 +99,7 @@ export const AdminDashboard: React.FC = () => {
 
   const handleUpdateTask = async (id: string) => {
     if (!token) return;
-    const res = await fetch(`http://localhost:3000/tasks/${id}`, {
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(editTaskData)
@@ -110,13 +110,13 @@ export const AdminDashboard: React.FC = () => {
   const handleDeleteTask = async (id: string) => {
     if (!token) return;
     if (!window.confirm("Delete this task?")) return;
-    await fetch(`http://localhost:3000/tasks/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    await fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
     fetchOrgData();
   };
 
   const markAlertRead = async (alertId: string) => {
     if (!token) return;
-    await fetch(`http://localhost:3000/alerts/${alertId}/read`, {
+    await fetch(`${import.meta.env.VITE_API_BASE_URL}/alerts/${alertId}/read`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` }
     });

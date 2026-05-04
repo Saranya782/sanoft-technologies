@@ -21,8 +21,8 @@ export const CreateTask: React.FC = () => {
       try {
         const headers = { Authorization: `Bearer ${token}` };
         const [teamsRes, usersRes] = await Promise.all([
-          fetch(`http://localhost:3000/teams/org/${dbUser.orgId}`, { headers }),
-          fetch(`http://localhost:3000/users/org/${dbUser.orgId}`, { headers })
+          fetch(`${import.meta.env.VITE_API_BASE_URL}/teams/org/${dbUser.orgId}`, { headers }),
+          fetch(`${import.meta.env.VITE_API_BASE_URL}/users/org/${dbUser.orgId}`, { headers })
         ]);
         setTeams(await teamsRes.json());
         setOrgUsers(await usersRes.json());
@@ -38,7 +38,7 @@ export const CreateTask: React.FC = () => {
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token || !dbUser?.orgId) return;
-    const res = await fetch('http://localhost:3000/tasks', {
+    const res = await fetch(import.meta.env.VITE_API_BASE_URL + '/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ ...newTask, orgId: dbUser.orgId })
