@@ -45,7 +45,7 @@ const Dashboard = () => {
 };
 
 function App() {
-  const { user, dbUser, setUser, setDbUser, setLoading, loading } = useAuthStore();
+  const { user, dbUser, setUser, setDbUser, setLoading, isLoading } = useAuthStore();
   const { theme } = useUiStore();
 
   useEffect(() => {
@@ -79,7 +79,7 @@ function App() {
     return () => unsubscribe();
   }, [setUser, setDbUser, setLoading]);
 
-  if (loading) {
+  if (isLoading) {
     return <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', color: 'var(--text-primary)' }}>Loading Sanoft Task...</div>;
   }
 
