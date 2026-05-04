@@ -282,3 +282,32 @@ button {
   box-shadow: none;
   font-weight: 600;
 }
+
+/* --- Mobile Responsiveness --- */
+@media (max-width: 768px) {
+  .dashboard-layout {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: auto;
+    height: auto;
+    position: relative;
+    top: 0;
+    margin: 1rem;
+    padding-bottom: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+  
+  .dashboard-main {
+    padding: 0.5rem 1rem 2rem 1rem;
+  }
+  
+  .auth-card {
+    box-shadow: none;
+    border: none;
+    background: transparent;
+    padding: 0;
+  }
+}
