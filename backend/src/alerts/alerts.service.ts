@@ -18,15 +18,15 @@ export class AlertsService {
 
     const now = new Date();
     
-    // We fetch pending/in-progress tasks with alerts enabled
+    // We fetch pending/in-progress tasks first, then filter alertEnabled in memory
+    // to avoid requiring a custom Firestore composite index.
     const snapshot = await db.collection('tasks')
-      .where('alertEnabled', '==', true)
       .where('status', 'in', ['pending', 'in-progress'])
       .get();
 
     for (const doc of snapshot.docs) {
       const task = doc.data();
-      if (!task.dueDate) continue;
+      if (!task.alertEnabled || !task.dueDate) continue;
 
       const dueDate = task.dueDate.toDate ? task.dueDate.toDate() : new Date(task.dueDate);
       const alertTimeMs = task.alertTimeMinutes * 60 * 1000;
@@ -42,7 +42,7 @@ export class AlertsService {
         await db.collection(this.collection).doc(alertId).set({
           id: alertId,
           taskId: task.id,
-          userId: task.assigneeId, // If team/org scope, we'd notify all members, but keeping it simple for assignee here
+          userId: task.scope === 'organization' ? task.orgId : task.assigneeId, 
           scope: task.scope,
           message: `Task "${task.title}" is due soon!`,
           isRead: false,
