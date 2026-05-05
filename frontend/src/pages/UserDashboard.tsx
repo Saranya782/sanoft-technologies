@@ -5,10 +5,13 @@ import { useUiStore } from '../store/uiStore';
 
 export const UserDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { token } = useAuthStore();
+  const { token, dbUser } = useAuthStore();
   const { activeTab, setUnreadAlertsCount } = useUiStore();
   const [tasks, setTasks] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
+  const [teams, setTeams] = useState<any[]>([]);
+  const [orgUsers, setOrgUsers] = useState<any[]>([]);
+  const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
   
   // Task Filters
@@ -19,15 +22,32 @@ export const UserDashboard: React.FC = () => {
   const fetchData = async () => {
     if (!token) return;
     try {
-      const [tasksRes, alertsRes] = await Promise.all([
+      const fetches = [
         fetch(import.meta.env.VITE_API_BASE_URL + '/tasks', { headers: { Authorization: `Bearer ${token}` } }),
         fetch(import.meta.env.VITE_API_BASE_URL + '/alerts', { headers: { Authorization: `Bearer ${token}` } })
-      ]);
+      ];
+
+      if (dbUser?.orgId) {
+        fetches.push(fetch(`${import.meta.env.VITE_API_BASE_URL}/teams/org/${dbUser.orgId}`, { headers: { Authorization: `Bearer ${token}` } }));
+        fetches.push(fetch(`${import.meta.env.VITE_API_BASE_URL}/users/org/${dbUser.orgId}`, { headers: { Authorization: `Bearer ${token}` } }));
+      }
+
+      const [tasksRes, alertsRes, teamsRes, usersRes] = await Promise.all(fetches);
       const tasksData = await tasksRes.json();
       const alertsData = await alertsRes.json();
       setTasks(tasksData);
       setAlerts(alertsData);
       setUnreadAlertsCount(alertsData.filter((a: any) => !a.isRead).length);
+
+      if (teamsRes && teamsRes.ok) {
+        const orgTeams = await teamsRes.json();
+        const myTeams = orgTeams.filter((t: any) => t.memberIds && t.memberIds.includes(dbUser?.id));
+        setTeams(myTeams);
+      }
+
+      if (usersRes && usersRes.ok) {
+        setOrgUsers(await usersRes.json());
+      }
     } catch (err) {
       console.error('Failed to fetch data', err);
     }
@@ -37,7 +57,7 @@ export const UserDashboard: React.FC = () => {
     fetchData(); // initial fetch
     const intervalId = setInterval(fetchData, 5000);
     return () => clearInterval(intervalId); // cleanup on unmount
-  }, [token]);
+  }, [token, dbUser?.orgId, dbUser?.id]);
 
   const markAlertRead = async (alertId: string) => {
     if (!token) return;
@@ -177,9 +197,62 @@ export const UserDashboard: React.FC = () => {
                         <option value="pending" style={{ background: 'var(--bg-color)', color: 'var(--text-primary)' }}>PENDING</option>
                         <option value="in-progress" style={{ background: 'var(--bg-color)', color: 'var(--text-primary)' }}>IN PROGRESS</option>
                         <option value="completed" style={{ background: 'var(--bg-color)', color: 'var(--text-primary)' }}>COMPLETED</option>
+                        <option value="overdue" disabled={dbUser?.role !== 'admin'} hidden={dbUser?.role !== 'admin' && task.status !== 'overdue'} style={{ background: 'var(--bg-color)', color: 'var(--text-primary)' }}>OVERDUE</option>
                       </select>
                     </div>
                   </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'teams' && (
+        <div className="glass-panel">
+          <h2>My Teams</h2>
+          <p>Teams you are currently a member of.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem', marginTop: '1.5rem', alignItems: 'start' }}>
+            {teams.length === 0 ? (
+              <p>You are not assigned to any teams yet.</p>
+            ) : (
+              teams.map(team => (
+                <div 
+                  key={team.id} 
+                  style={{ padding: '1.5rem', border: '1px solid var(--border-color)', borderRadius: '8px', background: 'var(--box-bg)', display: 'flex', flexDirection: 'column', cursor: 'pointer', transition: 'all 0.2s ease-in-out' }}
+                  onClick={() => setExpandedTeamId(expandedTeamId === team.id ? null : team.id)}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: expandedTeamId === team.id ? '1rem' : '0', paddingBottom: expandedTeamId === team.id ? '1rem' : '0', borderBottom: expandedTeamId === team.id ? '1px solid var(--border-color)' : 'none', transition: 'all 0.2s ease' }}>
+                    <div>
+                      <h3 style={{ margin: '0 0 0.5rem 0' }}>{team.name}</h3>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{team.memberIds.length} Members</span>
+                    </div>
+                    <div style={{ color: 'var(--text-secondary)', transform: expandedTeamId === team.id ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }}>
+                      ▼
+                    </div>
+                  </div>
+                  
+                  {expandedTeamId === team.id && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', animation: 'fadeIn 0.3s ease-in-out' }}>
+                      {team.memberIds.map((mId: string) => {
+                        const user = orgUsers.find(u => u.id === mId);
+                        if (!user) return null;
+                        return (
+                          <div key={user.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--primary-color)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 'bold' }}>
+                              {user.name?.charAt(0).toUpperCase()}
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                              <span style={{ fontSize: '0.9rem', fontWeight: user.id === dbUser?.id ? 'bold' : 'normal' }}>
+                                {user.name} {user.id === dbUser?.id ? '(You)' : ''}
+                              </span>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{user.email}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               ))
             )}

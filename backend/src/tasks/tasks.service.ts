@@ -115,11 +115,37 @@ export class TasksService {
       throw new ForbiddenException('Only admins can edit tasks');
     }
 
-    if (updates.dueDate) {
-      updates.dueDate = new Date(updates.dueDate) as any;
+    const cleanUpdates: any = { ...updates };
+    delete cleanUpdates.id;
+    delete cleanUpdates.createdAt;
+    delete cleanUpdates.createdBy;
+    delete cleanUpdates.orgId;
+
+    if (cleanUpdates.dueDate) {
+      cleanUpdates.dueDate = new Date(cleanUpdates.dueDate);
+      
+      const oldData = taskDoc.data() as any;
+      const oldDueDate = oldData?.dueDate?.toDate ? oldData.dueDate.toDate() : new Date(oldData?.dueDate);
+      
+      if (oldDueDate && oldDueDate.getTime() !== cleanUpdates.dueDate.getTime()) {
+        // Due date changed, reset alert flags so they can trigger again
+        cleanUpdates.alertFired = false;
+        cleanUpdates.overdueAlertFired = false;
+        
+        // If it was overdue but the new date is in the future, auto-revert to pending
+        if (oldData.status === 'overdue' && cleanUpdates.dueDate.getTime() > Date.now()) {
+          cleanUpdates.status = 'pending';
+        }
+      }
     }
 
-    await taskRef.update(updates);
+    try {
+      await taskRef.update(cleanUpdates);
+    } catch (error) {
+      console.error("Failed to update task in Firestore:", error);
+      throw error;
+    }
+    
     return { id: taskId, ...updates };
   }
 

@@ -29,6 +29,7 @@ export const Sidebar: React.FC = () => {
   const userLinks = [
     { id: 'overview', label: 'Overview' },
     { id: 'tasks', label: 'My Tasks' },
+    { id: 'teams', label: 'My Teams' },
     { id: 'alerts', label: 'Alerts' },
   ];
 

@@ -79,6 +79,30 @@ function App() {
     return () => unsubscribe();
   }, [setUser, setDbUser, setLoading]);
 
+  // Poll for dbUser changes (e.g. admin changes team or role)
+  useEffect(() => {
+    if (!user) return;
+    
+    const fetchUser = async () => {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch(import.meta.env.VITE_API_BASE_URL + '/users/me', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const newDbUser = await res.json();
+          // Zustand setDbUser replaces it; react handles deep equality or re-render if changed
+          setDbUser(newDbUser);
+        }
+      } catch (error) {
+        // silent fail on polling
+      }
+    };
+
+    const intervalId = setInterval(fetchUser, 5000);
+    return () => clearInterval(intervalId);
+  }, [user, setDbUser]);
+
   if (isLoading) {
     return <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', color: 'var(--text-primary)' }}>Loading Sanoft Task...</div>;
   }

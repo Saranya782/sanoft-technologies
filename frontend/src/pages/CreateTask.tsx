@@ -9,11 +9,20 @@ export const CreateTask: React.FC = () => {
   const [teams, setTeams] = useState<any[]>([]);
   const [orgUsers, setOrgUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dueDateStr, setDueDateStr] = useState('');
 
   const [newTask, setNewTask] = useState({
     title: '', description: '', scope: 'organization', assigneeId: '',
-    dueDate: '', alertEnabled: true, alertTimeMinutes: 30, priority: 'medium'
+    alertEnabled: true, alertTimeMinutes: 30, priority: 'medium'
   });
+
+  const parseLocalDatetimeToUTC = (localString: string) => {
+    if (!localString) return '';
+    const [datePart, timePart] = localString.split('T');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hours, minutes] = timePart.split(':').map(Number);
+    return new Date(year, month - 1, day, hours, minutes).toISOString();
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -41,7 +50,11 @@ export const CreateTask: React.FC = () => {
     const res = await fetch(import.meta.env.VITE_API_BASE_URL + '/tasks', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ ...newTask, orgId: dbUser.orgId })
+      body: JSON.stringify({ 
+        ...newTask, 
+        orgId: dbUser.orgId,
+        dueDate: parseLocalDatetimeToUTC(dueDateStr)
+      })
     });
     if (res.ok) {
       navigate('/');
@@ -61,7 +74,7 @@ export const CreateTask: React.FC = () => {
           <div className="input-group"><label>Description</label><textarea value={newTask.description} onChange={e => setNewTask({...newTask, description: e.target.value})} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)', minHeight: '100px', fontFamily: 'inherit' }} /></div>
           
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <div className="input-group" style={{ flex: 1, minWidth: '200px' }}><label>Due Date</label><input type="datetime-local" value={newTask.dueDate} onChange={e => setNewTask({...newTask, dueDate: e.target.value})} required /></div>
+            <div className="input-group" style={{ flex: 1, minWidth: '200px' }}><label>Due Date</label><input type="datetime-local" value={dueDateStr} onChange={e => setDueDateStr(e.target.value)} required /></div>
             
             <div className="input-group" style={{ flex: 1, minWidth: '200px' }}><label>Priority</label>
               <select value={newTask.priority} onChange={e => setNewTask({...newTask, priority: e.target.value})} style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-color)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '8px' }}>

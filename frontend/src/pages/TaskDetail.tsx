@@ -14,6 +14,26 @@ export const TaskDetail: React.FC = () => {
   const [teams, setTeams] = useState<any[]>([]);
   const [orgUsers, setOrgUsers] = useState<any[]>([]);
 
+  const formatLocalDatetime = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const parseLocalDatetimeToUTC = (localString: string) => {
+    if (!localString) return '';
+    const [datePart, timePart] = localString.split('T');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hours, minutes] = timePart.split(':').map(Number);
+    return new Date(year, month - 1, day, hours, minutes).toISOString();
+  };
+
   useEffect(() => {
     const fetchTask = async () => {
       if (!token) return;
@@ -66,9 +86,13 @@ export const TaskDetail: React.FC = () => {
       });
       if (res.ok) {
         setTask({ ...task, status: newStatus });
+      } else {
+        const errText = await res.text();
+        throw new Error(errText);
       }
-    } catch (err) {
-      console.error('Failed to update status');
+    } catch (err: any) {
+      console.error('Failed to update status', err);
+      alert('Failed to update status: ' + err.message);
     }
   };
 
@@ -83,9 +107,13 @@ export const TaskDetail: React.FC = () => {
       if (res.ok) {
         setTask(editData);
         setIsEditing(false);
+      } else {
+        const errText = await res.text();
+        throw new Error(errText);
       }
-    } catch (err) {
-      console.error('Failed to update task');
+    } catch (err: any) {
+      console.error('Failed to update task', err);
+      alert('Failed to update task: ' + err.message);
     }
   };
 
@@ -168,7 +196,16 @@ export const TaskDetail: React.FC = () => {
               </div>
               <div className="input-group" style={{ flex: 1, minWidth: '200px' }}>
                 <label>Due Date</label>
-                <input type="datetime-local" value={editData.dueDate} onChange={e => setEditData({...editData, dueDate: e.target.value})} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} />
+                <input 
+                  type="datetime-local" 
+                  value={formatLocalDatetime(editData.dueDate)} 
+                  onChange={e => {
+                    if (e.target.value) {
+                      setEditData({...editData, dueDate: parseLocalDatetimeToUTC(e.target.value)});
+                    }
+                  }} 
+                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} 
+                />
               </div>
             </div>
 
@@ -244,7 +281,7 @@ export const TaskDetail: React.FC = () => {
                   <option value="pending" style={{ background: 'var(--bg-color)', color: 'var(--text-primary)' }}>PENDING</option>
                   <option value="in-progress" style={{ background: 'var(--bg-color)', color: 'var(--text-primary)' }}>IN PROGRESS</option>
                   <option value="completed" style={{ background: 'var(--bg-color)', color: 'var(--text-primary)' }}>COMPLETED</option>
-                  {dbUser?.role === 'admin' && <option value="overdue" style={{ background: 'var(--bg-color)', color: 'var(--text-primary)' }}>OVERDUE</option>}
+                  <option value="overdue" disabled={dbUser?.role !== 'admin'} hidden={dbUser?.role !== 'admin' && task.status !== 'overdue'} style={{ background: 'var(--bg-color)', color: 'var(--text-primary)' }}>OVERDUE</option>
                 </select>
               </div>
             </div>
@@ -279,6 +316,28 @@ export const TaskDetail: React.FC = () => {
                 )}
               </div>
             </div>
+
+            {task.scope === 'team' && (
+              <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'var(--panel-bg)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--text-secondary)' }}>Team Members</h3>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                  {(() => {
+                    const team = teams.find(t => t.id === task.assigneeId);
+                    if (!team || !team.memberIds || team.memberIds.length === 0) return <span style={{ color: 'var(--text-secondary)' }}>No members found.</span>;
+                    return team.memberIds.map((mId: string) => {
+                      const user = orgUsers.find(u => u.id === mId);
+                      if (!user) return null;
+                      return (
+                        <div key={user.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'var(--box-bg)', borderRadius: '20px', border: '1px solid var(--border-color)' }}>
+                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary-color)' }}></div>
+                          <span style={{ fontSize: '0.9rem' }}>{user.name}</span>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            )}
 
             {dbUser?.role === 'admin' && (
               <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>

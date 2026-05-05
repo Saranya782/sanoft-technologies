@@ -33,25 +33,48 @@ export class AlertsService {
       
       const timeUntilDue = dueDate.getTime() - now.getTime();
       
-      // If time until due is less than or equal to alert time, and not already fired
-      // To prevent duplicate alerts, we can check a 'alertFired' flag on the task
-      if (timeUntilDue > 0 && timeUntilDue <= alertTimeMs && !task.alertFired) {
+      // If time until due is less than 0, it's overdue!
+      if (timeUntilDue < 0) {
+        if (task.status !== 'overdue') {
+          await db.collection('tasks').doc(task.id).update({ status: 'overdue' });
+          this.logger.log(`Marked task ${task.id} as overdue`);
+        }
         
+        if (!task.overdueAlertFired) {
+          const alertId = randomUUID();
+          await db.collection(this.collection).doc(alertId).set({
+            id: alertId,
+            taskId: task.id,
+            orgId: task.orgId || '',
+            userId: task.scope === 'organization' ? task.orgId : task.assigneeId, 
+            scope: task.scope,
+            message: `Task "${task.title}" is OVERDUE!`,
+            isRead: false,
+            triggerTime: now,
+            type: 'overdue'
+          });
+          await db.collection('tasks').doc(task.id).update({ overdueAlertFired: true });
+        }
+      } 
+      // If time until due is within the alert window, and not already fired
+      else if (timeUntilDue > 0 && timeUntilDue <= alertTimeMs && !task.alertFired) {
         const alertId = randomUUID();
         // Generate an alert
         await db.collection(this.collection).doc(alertId).set({
           id: alertId,
           taskId: task.id,
+          orgId: task.orgId || '',
           userId: task.scope === 'organization' ? task.orgId : task.assigneeId, 
           scope: task.scope,
           message: `Task "${task.title}" is due soon!`,
           isRead: false,
-          triggerTime: now
+          triggerTime: now,
+          type: 'upcoming'
         });
 
         // Mark task alert as fired
         await db.collection('tasks').doc(task.id).update({ alertFired: true });
-        this.logger.log(`Generated alert for task ${task.id}`);
+        this.logger.log(`Generated upcoming alert for task ${task.id}`);
       }
     }
   }
@@ -63,13 +86,20 @@ export class AlertsService {
     const userData = userDoc.data();
     if (!userData) return [];
 
-    const targetIds = [userId, userData.orgId, ...(userData.teamIds || [])].filter(Boolean);
     const allDocs = [];
-    
-    for (let i = 0; i < targetIds.length; i += 10) {
-      const chunk = targetIds.slice(i, i + 10);
-      const snapshot = await db.collection(this.collection).where('userId', 'in', chunk).get();
+
+    if (userData.role === 'admin') {
+      // Admins see all alerts in their organization
+      const snapshot = await db.collection(this.collection).where('orgId', '==', userData.orgId).get();
       allDocs.push(...snapshot.docs);
+    } else {
+      // Regular users see alerts targeted to them, their teams, or the whole organization
+      const targetIds = [userId, userData.orgId, ...(userData.teamIds || [])].filter(Boolean);
+      for (let i = 0; i < targetIds.length; i += 10) {
+        const chunk = targetIds.slice(i, i + 10);
+        const snapshot = await db.collection(this.collection).where('userId', 'in', chunk).get();
+        allDocs.push(...snapshot.docs);
+      }
     }
 
     return allDocs.map(d => {

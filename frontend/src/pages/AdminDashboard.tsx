@@ -32,6 +32,13 @@ export const AdminDashboard: React.FC = () => {
   const [taskPriorityFilter, setTaskPriorityFilter] = useState('All Priorities');
   const [taskScopeFilter, setTaskScopeFilter] = useState('All Scopes');
 
+  // Member Filters
+  const [memberSearch, setMemberSearch] = useState('');
+  const [memberRoleFilter, setMemberRoleFilter] = useState('All Roles');
+  const [memberTeamFilter, setMemberTeamFilter] = useState('All Teams');
+  const [memberTaskFilter, setMemberTaskFilter] = useState('All Tasks');
+  const [memberTaskStatusFilter, setMemberTaskStatusFilter] = useState('All Statuses');
+
   const fetchOrgData = async () => {
     if (!token || !dbUser?.orgId) return;
     try {
@@ -134,6 +141,54 @@ export const AdminDashboard: React.FC = () => {
     return matchesSearch && matchesStatus && matchesPriority && matchesScope;
   });
 
+  const filteredMembers = orgUsers.filter(user => {
+    // 1. Search filter
+    const matchesSearch = (user.name?.toLowerCase() || '').includes(memberSearch.toLowerCase()) || 
+                          (user.email?.toLowerCase() || '').includes(memberSearch.toLowerCase());
+    
+    // 2. Role filter
+    const matchesRole = memberRoleFilter === 'All Roles' || user.role === memberRoleFilter;
+    
+    // 3. Team filter
+    let matchesTeam = true;
+    if (memberTeamFilter !== 'All Teams') {
+      const selectedTeam = teams.find(t => t.id === memberTeamFilter);
+      matchesTeam = selectedTeam ? (selectedTeam.memberIds || []).includes(user.id) : false;
+    }
+
+    // 4. Task filter
+    let matchesTask = true;
+    if (memberTaskFilter !== 'All Tasks') {
+      const selectedTask = tasks.find(t => t.id === memberTaskFilter);
+      if (!selectedTask) {
+        matchesTask = false;
+      } else if (selectedTask.scope === 'user') {
+        matchesTask = selectedTask.assigneeId === user.id;
+      } else if (selectedTask.scope === 'team') {
+        const team = teams.find(t => t.id === selectedTask.assigneeId);
+        matchesTask = team ? (team.memberIds || []).includes(user.id) : false;
+      } else {
+        matchesTask = true; // org scope includes all users
+      }
+    }
+
+    // 5. Task Status filter
+    let matchesTaskStatus = true;
+    if (memberTaskStatusFilter !== 'All Statuses') {
+      const userTasks = tasks.filter(t => {
+        if (t.scope === 'user') return t.assigneeId === user.id;
+        if (t.scope === 'team') {
+          const team = teams.find(tm => tm.id === t.assigneeId);
+          return team ? (team.memberIds || []).includes(user.id) : false;
+        }
+        return true; // org scope
+      });
+      matchesTaskStatus = userTasks.some(t => t.status === memberTaskStatusFilter);
+    }
+
+    return matchesSearch && matchesRole && matchesTeam && matchesTask && matchesTaskStatus;
+  });
+
   return (
     <div>
       {!dbUser?.orgId && !org ? (
@@ -152,21 +207,92 @@ export const AdminDashboard: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', marginTop: '2rem' }}>
           
           {activeTab === 'overview' && (
-            <div className="glass-panel">
-              <h3>Organization Overview</h3>
-              <p>Welcome to <strong>{org?.name}</strong>. Use the sidebar to navigate through your team, tasks, and analytics.</p>
-              <div style={{ display: 'flex', gap: '2rem', marginTop: '1.5rem' }}>
-                <div style={{ flex: 1, padding: '1.5rem', background: 'var(--panel-bg)', borderRadius: '8px' }}>
-                  <h4>Total Teams</h4>
-                  <p style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>{teams.length}</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              <div className="glass-panel">
+                <h3>Organization Overview</h3>
+                <p>Welcome to <strong>{org?.name}</strong>. Use the sidebar to navigate through your team, tasks, and analytics.</p>
+                <div style={{ display: 'flex', gap: '2rem', marginTop: '1.5rem' }}>
+                  <div style={{ flex: 1, padding: '1.5rem', background: 'var(--panel-bg)', borderRadius: '8px' }}>
+                    <h4>Total Teams</h4>
+                    <p style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>{teams.length}</p>
+                  </div>
+                  <div style={{ flex: 1, padding: '1.5rem', background: 'var(--panel-bg)', borderRadius: '8px' }}>
+                    <h4>Total Tasks</h4>
+                    <p style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>{tasks.length}</p>
+                  </div>
+                  <div style={{ flex: 1, padding: '1.5rem', background: 'var(--panel-bg)', borderRadius: '8px' }}>
+                    <h4>Total Members</h4>
+                    <p style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>{orgUsers.length}</p>
+                  </div>
                 </div>
-                <div style={{ flex: 1, padding: '1.5rem', background: 'var(--panel-bg)', borderRadius: '8px' }}>
-                  <h4>Total Tasks</h4>
-                  <p style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>{tasks.length}</p>
+              </div>
+
+              <div className="glass-panel">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                  <h3 style={{ margin: 0 }}>Organization Members</h3>
                 </div>
-                <div style={{ flex: 1, padding: '1.5rem', background: 'var(--panel-bg)', borderRadius: '8px' }}>
-                  <h4>Total Members</h4>
-                  <p style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>{orgUsers.length}</p>
+
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <div style={{ flex: 2, minWidth: '200px' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Search members by name or email..." 
+                      value={memberSearch} 
+                      onChange={e => setMemberSearch(e.target.value)} 
+                      style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)' }} 
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: '150px' }}>
+                    <select value={memberRoleFilter} onChange={e => setMemberRoleFilter(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)' }}>
+                      <option value="All Roles">All Roles</option>
+                      <option value="admin">Admin</option>
+                      <option value="user">User</option>
+                    </select>
+                  </div>
+                  <div style={{ flex: 1, minWidth: '150px' }}>
+                    <select value={memberTeamFilter} onChange={e => setMemberTeamFilter(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)' }}>
+                      <option value="All Teams">All Teams</option>
+                      {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ flex: 1, minWidth: '150px' }}>
+                    <select value={memberTaskFilter} onChange={e => setMemberTaskFilter(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)' }}>
+                      <option value="All Tasks">All Tasks</option>
+                      {tasks.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ flex: 1, minWidth: '150px' }}>
+                    <select value={memberTaskStatusFilter} onChange={e => setMemberTaskStatusFilter(e.target.value)} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-primary)' }}>
+                      <option value="All Statuses">All Task Statuses</option>
+                      <option value="pending">Has Pending</option>
+                      <option value="in-progress">Has In Progress</option>
+                      <option value="completed">Has Completed</option>
+                      <option value="overdue">Has Overdue</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                  {filteredMembers.length === 0 ? (
+                    <p style={{ color: 'var(--text-secondary)' }}>No members match your filters.</p>
+                  ) : (
+                    filteredMembers.map(user => (
+                      <div key={user.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                          <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
+                            {user.name ? user.name.charAt(0).toUpperCase() : '?'}
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <strong style={{ fontSize: '1rem' }}>{user.name}</strong>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{user.email}</span>
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '4px', background: 'var(--bg-color)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)' }}>
+                          {user.role?.toUpperCase() || 'USER'}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
