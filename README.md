@@ -110,5 +110,5 @@ FIREBASE_PRIVATE_KEY="your_private_key"
 - Add all backend environment variables (`FIREBASE_PRIVATE_KEY`, etc.) in the hosting dashboard.
 
 ## Live URLs
-- **Frontend Live URL**: *(https://sanoft-task-manager.web.app/)*
-- **Backend Live URL**: *(https://sanoft-backend-345190292004.us-central1.run.app)*
+- **Frontend**: [https://sanoft-task-manager.web.app/](https://sanoft-task-manager.web.app/)
+- **Backend**: [https://sanoft-backend-345190292004.us-central1.run.app](https://sanoft-backend-345190292004.us-central1.run.app)
