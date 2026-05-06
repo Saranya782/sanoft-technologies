@@ -21,24 +21,23 @@ export class UsersController {
 
     let orgId = body.orgId;
     
-    // For testing purposes: Auto-assign new regular users to the first available organization
-    // so they immediately appear in the Admin's team assignment dropdown.
     if (!orgId && (!body.role || body.role === 'user')) {
-      const db = this.usersService['firebaseService'].getFirestore();
-      const orgs = await db.collection('organizations').limit(1).get();
-      if (!orgs.empty) {
-        orgId = orgs.docs[0].id;
-      }
+      // Intentionally left blank to avoid auto-assigning to the first organization.
+      // New users will remain as guests without an orgId until invited.
     }
 
-    const newUser = await this.usersService.createUser({
+    const userPayload: any = {
       id: firebaseUser.uid,
       email: firebaseUser.email,
       name: body.name || firebaseUser.email.split('@')[0],
       role: body.role || 'user',
-      orgId: orgId,
       teamIds: [],
-    });
+    };
+    if (orgId) {
+      userPayload.orgId = orgId;
+    }
+
+    const newUser = await this.usersService.createUser(userPayload);
 
     return newUser;
   }
@@ -60,5 +59,51 @@ export class UsersController {
       throw new ForbiddenException("You can only view users in your organization");
     }
     return this.usersService.getUsersByOrg(orgId);
+  }
+
+  @Get('guests')
+  @UseGuards(AuthGuard)
+  async getGuestUsers(@Request() req: any) {
+    const firebaseUser = req.user;
+    const currentUser = await this.usersService.getUser(firebaseUser.uid);
+    if (!currentUser || currentUser.role !== 'admin') {
+      const { ForbiddenException } = require('@nestjs/common');
+      throw new ForbiddenException("Only admins can view guest users");
+    }
+    return this.usersService.getGuestUsers();
+  }
+
+  @Post('invite')
+  @UseGuards(AuthGuard)
+  async inviteUser(@Request() req: any, @Body() body: { email: string }) {
+    const firebaseUser = req.user;
+    const currentUser = await this.usersService.getUser(firebaseUser.uid);
+    
+    if (!currentUser || currentUser.role !== 'admin' || !currentUser.orgId) {
+      const { ForbiddenException } = require('@nestjs/common');
+      throw new ForbiddenException("Only admins can invite users");
+    }
+    
+    try {
+      return await this.usersService.inviteUser(body.email, currentUser.orgId, currentUser.name);
+    } catch (e: any) {
+      const { BadRequestException } = require('@nestjs/common');
+      throw new BadRequestException(e.message);
+    }
+  }
+
+  @Post('accept-invite')
+  @UseGuards(AuthGuard)
+  async acceptInvite(@Request() req: any, @Body() body: { alertId: string, orgId: string }) {
+    const firebaseUser = req.user;
+    
+    // update user orgId
+    await this.usersService.updateUserOrg(firebaseUser.uid, body.orgId);
+    
+    // mark alert as read
+    const db = this.usersService['firebaseService'].getFirestore();
+    await db.collection('alerts').doc(body.alertId).update({ isRead: true });
+    
+    return { success: true, orgId: body.orgId };
   }
 }

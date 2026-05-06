@@ -1,3 +1,95 @@
+Overview
+You are required to design and build a Task Management System that allows organizations to manage
+tasks across teams and individual users. The system includes a React-based frontend, a NestJS or
+Express.js backend, and is fully deployed on Google Cloud Platform (GCP) using free-tier infrastructure.
+Application Description
+Core Concept
+Build a multi-tenant Organizational Task Management application where:
+Administrators can create and manage tasks with defined timings and alert settings.
+Users and Admins within the same organization can view tasks and receive time-based alerts.
+Tasks can be scoped at three levels: Organization, Team, and Individual User.
+Admins (based on user roles) can view reports with date-based filtering and graphical insights into
+task completion.
+Feature Requirements
+1. Authentication & Authorization
+Users must be able to register and log in securely.
+Implement role-based access control (RBAC):
+admin
+ — Full access including task management and reports.
+user
+ — Read-only access to tasks assigned to them, their team, or their organization.
+Protect all backend routes with authentication middleware.
+Implement JWT-based authentication with proper token management.
+2. Organization & Team Management
+A user belongs to an organization.
+An organization can have multiple teams.
+Users can belong to one or more teams.
+Admins can manage teams and assign users.
+3. Task Management (Admin)
+Create tasks with the following fields:
+Title
+Description
+Assigned scope: 
+organization
+ | 
+team
+ | 
+Assignee (organization ID / team ID / user ID)
+Due date & time
+Alert enabled (boolean)
+Alert time (minutes before due time)
+Status: 
+pending
+ | 
+user
+in-progress
+ | 
+completed
+ | 
+overdue
+Priority: 
+low
+ | 
+medium
+ | 
+high
+Edit and delete tasks.
+View all tasks within their organization.
+4. Task Viewing (All Users)
+Users can see tasks assigned to:
+Their organization (organization-level tasks)
+Their team(s) (team-level tasks)
+Themselves (individual tasks)
+Real-time or near-real-time task status updates.
+5. Alert System
+Send in-app (or email) alerts when a task's alert time is reached.
+Alerts should be visible on the dashboard.
+Unread/read alert state management.
+6. Reports & Analytics (Admin Only)
+View task completion reports filterable by:
+Date range
+Team
+Individual user
+Task scope
+Include at least 2 chart types to visualize:
+Task completion rate over time (e.g., line chart)
+Task distribution by status (e.g., pie or bar chart)
+(Optional) Task completion by team or user
+Technology Stack
+Layer
+Frontend
+Technology
+React (with TypeScript preferred)
+Backend
+NestJS or Express.js
+Database
+Hosting (FE)
+Firestore (NoSQL, GCP)
+Firebase Hosting
+Hosting (BE)
+Version Control
+Cloud Run or App Engine
+GitHub or GitLab
 Best Practices to Follow
 The following best practices are mandatory and will be assessed during code review.
 1. REST API Design & Resource Naming
@@ -221,4 +313,13 @@ Bonus Points
 Automated CI/CD pipeline (GitHub Actions / GitLab CI).
 Unit or integration tests.
 Mobile-responsive design.
-
+Submission Instructions
+Please submit the following to [interviewer email] by the deadline:
+1. GitHub/GitLab repository URL(s)
+2. Live Frontend URL (Firebase Hosting)
+3. Live Backend URL (Cloud Run / App Engine)
+4. GCP Project ID and grant 
+sakkeer@sanoft.com
+ the Viewer IAM role for inspection
+5. Test credentials — provide at least one admin and one user account for review
+6. A short Loom / screen recording (optional but appreciated) walking through the application

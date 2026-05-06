@@ -21,8 +21,10 @@ export const Sidebar: React.FC = () => {
     { id: 'overview', label: 'Overview' },
     { id: 'teams', label: 'Manage Teams' },
     { id: 'tasks', label: 'Tasks' },
+    { id: 'invitations', label: 'Guest Invites' },
     { id: 'alerts', label: 'Alerts' },
     { id: 'analytics', label: 'Analytics' },
+    { id: 'profile', label: 'My Profile' },
     { id: 'settings', label: 'Settings' },
   ];
 
@@ -31,9 +33,20 @@ export const Sidebar: React.FC = () => {
     { id: 'tasks', label: 'My Tasks' },
     { id: 'teams', label: 'My Teams' },
     { id: 'alerts', label: 'Alerts' },
+    { id: 'profile', label: 'My Profile' }
   ];
 
-  const links = dbUser?.role === 'admin' ? adminLinks : userLinks;
+  const guestLinks = [
+    { id: 'alerts', label: 'Alerts' },
+    { id: 'profile', label: 'My Profile' }
+  ];
+
+  let links = guestLinks;
+  if (dbUser?.role === 'admin') {
+    links = adminLinks;
+  } else if (dbUser?.orgId) {
+    links = userLinks;
+  }
 
   return (
     <div className="sidebar glass-panel">

@@ -26,6 +26,11 @@ export const AdminDashboard: React.FC = () => {
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editTaskData, setEditTaskData] = useState<any>({});
   
+  // Invitations State
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteStatus, setInviteStatus] = useState<{message: string, isError: boolean} | null>(null);
+  const [guests, setGuests] = useState<any[]>([]);
+  
   // Task Filters
   const [taskSearch, setTaskSearch] = useState('');
   const [taskStatusFilter, setTaskStatusFilter] = useState('All Statuses');
@@ -42,17 +47,21 @@ export const AdminDashboard: React.FC = () => {
   const fetchOrgData = async () => {
     if (!token || !dbUser?.orgId) return;
     try {
-      const [orgRes, teamsRes, tasksRes, usersRes, alertsRes] = await Promise.all([
+      const [orgRes, teamsRes, tasksRes, usersRes, alertsRes, guestsRes] = await Promise.all([
         fetch(`${import.meta.env.VITE_API_BASE_URL}/organizations/${dbUser.orgId}`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${import.meta.env.VITE_API_BASE_URL}/teams/org/${dbUser.orgId}`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${import.meta.env.VITE_API_BASE_URL}/tasks`, { headers: { Authorization: `Bearer ${token}` } }),
         fetch(`${import.meta.env.VITE_API_BASE_URL}/users/org/${dbUser.orgId}`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${import.meta.env.VITE_API_BASE_URL}/alerts`, { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/alerts`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${import.meta.env.VITE_API_BASE_URL}/users/guests`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
       setOrg(await orgRes.json());
       setTeams(await teamsRes.json());
       setTasks(await tasksRes.json());
       setOrgUsers(await usersRes.json());
+      if (guestsRes.ok) {
+        setGuests(await guestsRes.json());
+      }
       
       const alertsData = await alertsRes.json();
       setAlerts(alertsData);
@@ -79,6 +88,50 @@ export const AdminDashboard: React.FC = () => {
       body: JSON.stringify({ name: orgName })
     });
     if (res.ok) window.location.reload(); 
+  };
+
+  const handleInviteUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    setInviteStatus(null);
+    try {
+      const res = await fetch(import.meta.env.VITE_API_BASE_URL + '/users/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ email: inviteEmail })
+      });
+      if (res.ok) {
+        setInviteStatus({ message: 'Invitation sent successfully!', isError: false });
+        setInviteEmail('');
+        fetchOrgData(); // Refresh to update guest status
+      } else {
+        const errorData = await res.json();
+        setInviteStatus({ message: errorData.message || 'Failed to send invitation', isError: true });
+      }
+    } catch (err) {
+      setInviteStatus({ message: 'Network error while sending invitation', isError: true });
+    }
+  };
+
+  const inviteGuest = async (email: string) => {
+    if (!token) return;
+    setInviteStatus(null);
+    try {
+      const res = await fetch(import.meta.env.VITE_API_BASE_URL + '/users/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ email })
+      });
+      if (res.ok) {
+        setInviteStatus({ message: `Invitation sent to ${email}!`, isError: false });
+        fetchOrgData();
+      } else {
+        const errorData = await res.json();
+        setInviteStatus({ message: errorData.message || 'Failed to send invitation', isError: true });
+      }
+    } catch (err) {
+      setInviteStatus({ message: 'Network error while sending invitation', isError: true });
+    }
   };
 
   // TEAM ACTIONS
@@ -446,8 +499,104 @@ export const AdminDashboard: React.FC = () => {
             </div>
           )}
 
+          {activeTab === 'invitations' && (
+            <div className="glass-panel">
+              <h3>Guest Invitations</h3>
+              <p>Invite users who have already registered an account to join your organization.</p>
+              
+              <div style={{ marginTop: '1.5rem', padding: '1.5rem', border: '1px solid var(--border-color)', borderRadius: '8px', background: 'var(--panel-bg)' }}>
+                <h4>Send New Invite</h4>
+                {inviteStatus && (
+                  <div style={{ padding: '0.75rem', marginBottom: '1rem', borderRadius: '4px', background: inviteStatus.isError ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.2)', color: inviteStatus.isError ? '#ef4444' : '#22c55e', border: `1px solid ${inviteStatus.isError ? '#ef4444' : '#22c55e'}` }}>
+                    {inviteStatus.message}
+                  </div>
+                )}
+                <form onSubmit={handleInviteUser} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <div className="input-group" style={{ flex: 1, minWidth: '250px', marginBottom: 0 }}>
+                    <label style={{ whiteSpace: 'nowrap', display: 'block', marginBottom: '0.5rem' }}>User Email Address</label>
+                    <input 
+                      type="email" 
+                      value={inviteEmail} 
+                      onChange={e => setInviteEmail(e.target.value)} 
+                      placeholder="e.g. testuser@gmail.com" 
+                      required 
+                      style={{ background: 'var(--bg-color)', width: '100%' }}
+                    />
+                  </div>
+                  <button type="submit" className="btn-primary" style={{ height: '42px', whiteSpace: 'nowrap', padding: '0 1.5rem', flexShrink: 0 }}>
+                    Send Invitation
+                  </button>
+                </form>
+              </div>
+
+              <div style={{ marginTop: '2rem' }}>
+                <h4 style={{ marginBottom: '1rem' }}>Newly Joined Guests</h4>
+                {guests.length === 0 ? (
+                  <p style={{ color: 'var(--text-secondary)' }}>No new guests found.</p>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+                    {guests.map((guest: any) => (
+                      <div key={guest.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                          <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
+                            {guest.name ? guest.name.charAt(0).toUpperCase() : '?'}
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <strong style={{ fontSize: '1rem' }}>{guest.name}</strong>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{guest.email}</span>
+                          </div>
+                        </div>
+                        {guest.hasPendingInvite ? (
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', background: 'var(--bg-color)', padding: '0.3rem 0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                            Invited
+                          </span>
+                        ) : (
+                          <button 
+                            className="btn-primary" 
+                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }} 
+                            onClick={() => inviteGuest(guest.email)}
+                          >
+                            Invite
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'analytics' && <AnalyticsDashboard tasks={tasks} teams={teams} orgUsers={orgUsers} />}
           
+          {activeTab === 'profile' && (
+            <div className="glass-panel">
+              <h2>My Profile</h2>
+              <p>Your account information and settings.</p>
+              <div style={{ marginTop: '1.5rem', padding: '1.5rem', border: '1px solid var(--border-color)', borderRadius: '8px', background: 'var(--panel-bg)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--primary-color)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 'bold' }}>
+                    {dbUser?.name?.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{dbUser?.name}</h3>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>{dbUser?.email}</span>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
+                  <div>
+                    <p style={{ color: 'var(--text-secondary)', margin: '0 0 0.5rem 0' }}>Role</p>
+                    <p style={{ margin: 0, fontWeight: 'bold', textTransform: 'capitalize' }}>{dbUser?.role}</p>
+                  </div>
+                  <div>
+                    <p style={{ color: 'var(--text-secondary)', margin: '0 0 0.5rem 0' }}>Organization</p>
+                    <p style={{ margin: 0, fontWeight: 'bold' }}>{dbUser?.orgId ? 'Sanoft Technologies' : 'Guest / No Organization'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'settings' && (
             <div className="glass-panel">
               <h3>Settings</h3>

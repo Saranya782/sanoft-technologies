@@ -6,7 +6,7 @@ import { useUiStore } from '../store/uiStore';
 export const UserDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { token, dbUser } = useAuthStore();
-  const { activeTab, setUnreadAlertsCount } = useUiStore();
+  const { activeTab, setActiveTab, setUnreadAlertsCount } = useUiStore();
   const [tasks, setTasks] = useState<any[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
@@ -59,6 +59,12 @@ export const UserDashboard: React.FC = () => {
     return () => clearInterval(intervalId); // cleanup on unmount
   }, [token, dbUser?.orgId, dbUser?.id]);
 
+  useEffect(() => {
+    if (dbUser && !dbUser.orgId && dbUser.role !== 'admin' && activeTab === 'overview') {
+      setActiveTab('alerts');
+    }
+  }, [dbUser, activeTab, setActiveTab]);
+
   const markAlertRead = async (alertId: string) => {
     if (!token) return;
     await fetch(`${import.meta.env.VITE_API_BASE_URL}/alerts/${alertId}/read`, {
@@ -68,6 +74,22 @@ export const UserDashboard: React.FC = () => {
     const newAlerts = alerts.map(a => a.id === alertId ? { ...a, isRead: true } : a);
     setAlerts(newAlerts);
     setUnreadAlertsCount(newAlerts.filter((a: any) => !a.isRead).length);
+  };
+
+  const acceptInvite = async (alertId: string, orgId: string) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/users/accept-invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ alertId, orgId })
+      });
+      if (res.ok) {
+        window.location.reload(); // Reload to fetch user's new org data and get access
+      }
+    } catch (err) {
+      console.error('Failed to accept invite', err);
+    }
   };
 
   const updateTaskStatus = async (taskId: string, newStatus: string) => {
@@ -99,7 +121,7 @@ export const UserDashboard: React.FC = () => {
 
   return (
     <div style={{ marginTop: '2rem' }}>
-      {activeTab === 'overview' && (
+      {activeTab === 'overview' && dbUser?.orgId && (
         <div className="glass-panel">
           <h2>Dashboard Overview</h2>
           <p>Here's a quick summary of your workload.</p>
@@ -124,7 +146,7 @@ export const UserDashboard: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'tasks' && (
+      {activeTab === 'tasks' && dbUser?.orgId && (
         <div className="glass-panel">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <h2 style={{ margin: 0 }}>My Tasks</h2>
@@ -208,7 +230,7 @@ export const UserDashboard: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'teams' && (
+      {activeTab === 'teams' && dbUser?.orgId && (
         <div className="glass-panel">
           <h2>My Teams</h2>
           <p>Teams you are currently a member of.</p>
@@ -279,12 +301,45 @@ export const UserDashboard: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  {!alert.isRead && (
-                    <button className="btn-secondary" style={{ padding: '0.3rem 0.6rem' }} onClick={() => markAlertRead(alert.id)}>Mark Read</button>
-                  )}
+                  <div>
+                    {!alert.isRead && (
+                      <button className="btn-secondary" style={{ padding: '0.3rem 0.6rem' }} onClick={() => markAlertRead(alert.id)}>Mark Read</button>
+                    )}
+                    {alert.type === 'invitation' && !alert.isRead && (
+                      <button className="btn-primary" style={{ padding: '0.3rem 0.6rem', marginLeft: '0.5rem' }} onClick={() => acceptInvite(alert.id, alert.orgId)}>Accept</button>
+                    )}
+                  </div>
                 </div>
               ))
             )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'profile' && (
+        <div className="glass-panel">
+          <h2>My Profile</h2>
+          <p>Your account information and settings.</p>
+          <div style={{ marginTop: '1.5rem', padding: '1.5rem', border: '1px solid var(--border-color)', borderRadius: '8px', background: 'var(--box-bg)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginBottom: '1.5rem' }}>
+              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--primary-color)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 'bold' }}>
+                {dbUser?.name?.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.5rem' }}>{dbUser?.name}</h3>
+                <span style={{ color: 'var(--text-secondary)', fontSize: '1.1rem' }}>{dbUser?.email}</span>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
+              <div>
+                <p style={{ color: 'var(--text-secondary)', margin: '0 0 0.5rem 0' }}>Role</p>
+                <p style={{ margin: 0, fontWeight: 'bold', textTransform: 'capitalize' }}>{dbUser?.role}</p>
+              </div>
+              <div>
+                <p style={{ color: 'var(--text-secondary)', margin: '0 0 0.5rem 0' }}>Organization</p>
+                <p style={{ margin: 0, fontWeight: 'bold' }}>{dbUser?.orgId ? 'Sanoft Technologies' : 'Guest / No Organization'}</p>
+              </div>
+            </div>
           </div>
         </div>
       )}
