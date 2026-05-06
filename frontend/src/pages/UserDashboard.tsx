@@ -305,7 +305,7 @@ export const UserDashboard: React.FC = () => {
                     {!alert.isRead && (
                       <button className="btn-secondary" style={{ padding: '0.3rem 0.6rem' }} onClick={() => markAlertRead(alert.id)}>Mark Read</button>
                     )}
-                    {alert.type === 'invitation' && !alert.isRead && (
+                    {alert.type === 'invitation' && (
                       <button className="btn-primary" style={{ padding: '0.3rem 0.6rem', marginLeft: '0.5rem' }} onClick={() => acceptInvite(alert.id, alert.orgId)}>Accept</button>
                     )}
                   </div>
